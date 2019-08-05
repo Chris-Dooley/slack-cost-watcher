@@ -20,7 +20,7 @@ Parameters:
     Description: 'Service detail queries: Danger level for monthly cost ($).'
     Type: Number
   NotificationTime:
-    Default: '3'
+    Default: '1'
     Description: 'Notification time in 24-hour notation (UTC). (0-23)'
     Type: Number
   SlackWebHookUrl:
@@ -119,7 +119,7 @@ Resources:
   LambdaCronEvent:
     Type: AWS::Events::Rule
     Properties:
-      ScheduleExpression: cron(0 0 * * ? *)
+      ScheduleExpression: !Sub 'cron(0 ${NotificationTime} * * ? *)'
       Targets:
         - Arn:
             !GetAtt "LambdaFunctionCWAccount.Arn"
