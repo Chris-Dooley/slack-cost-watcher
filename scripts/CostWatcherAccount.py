@@ -5,7 +5,7 @@ import os
 from botocore.vendored import requests
 
 startDate = datetime.datetime.today() - datetime.timedelta(days = 1)
-startDateSOM = datetime.datetime.today().replace(day=1)
+startDateSOM = startDate.replace(day=1)
 endDate = datetime.datetime.today()
 
 AccountWarningLevel = int(os.environ['AccountWarningLevel'])
