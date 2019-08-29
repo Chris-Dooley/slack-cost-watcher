@@ -20,7 +20,7 @@ Parameters:
     Description: 'Service detail queries: Danger level for monthly cost ($).'
     Type: Number
   NotificationTime:
-    Default: '1'
+    Default: '3'
     Description: 'Notification time in 24-hour notation (UTC). (0-23)'
     Type: Number
   SlackWebHookUrl:
