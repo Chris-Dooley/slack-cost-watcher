@@ -120,25 +120,18 @@ def lambda_handler(event, context):
             
         OutputList = sorted(OutputList, key=lambda x: x[2], reverse=True)
         
-        record = 0
-        payload = '{"username":"Cost-Watcher","icon_emoji":":money_with_wings:","text": '
-        payload += '"*{}* - Cost yesterday is ${:.2f}. MTD is ${:.2f}",'.format(account, round(dailyTotalCost, 2), round(monthlyTotalCost, 2))
-        payload += '"attachments": ['
+        payload = '{"username":"Cost-Watcher","icon_emoji":":fire:","text": "'
+        payload += '*{}* - Cost yesterday is ${:.2f}. MTD is ${:.2f}\n'.format(account, round(dailyTotalCost, 2), round(monthlyTotalCost, 2))
         
         for key, val1, val2 in OutputList:
-            if record == 1:
-                payload += ','
-            
             if val2 > DetailDangerLevel:
-                color = '"danger"'
+                emoji = 'red_bar'
             elif val2 > DetailWarningLevel:
-                color = '"warning"'
+                emoji = 'yellow_bar'
             else:
-                color = '"good"'
-            payload += '{"text":"`' + '{0:{1}}'.format(key,maxService) + ': Y${0:{1}.2f}'.format(round(val1, 2),maxDaily) + '  M${0:{1}.2f}'.format(round(val2, 2),maxMonthly) + '`",' + '"color":' + color + ',"mrkdwn_in":["text"]}'
-            record = 1
-        
-        payload += ']}'
+                emoji = 'green_bar'
+            payload += ':{}:`'.format(emoji) + '{0:{1}}'.format(key,maxService) + ': Y${0:{1}.2f}'.format(round(val1, 2),maxDaily) + '  M${0:{1}.2f}'.format(round(val2, 2),maxMonthly) + '`\n'        
+        payload += '"}'
     
     except Exception as e:
         payload = '{"text" : "' + '[ERROR] {}'.format(str(e)) + '"}'
