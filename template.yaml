@@ -2,6 +2,9 @@ AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: "Cost Watcher - Keeping tabs on your spend"
 
+##############################################################################
+# PARAMETERS
+##############################################################################
 Parameters:
   AccountWarningLevel:
     Default: 300
@@ -28,7 +31,13 @@ Parameters:
     Description: 'Incoming webhook URL from Slack.'
     Type: String
 
+##############################################################################
+# RESOURCES
+##############################################################################
 Resources:
+  ############################################################################
+  # API GATEWAY
+  ############################################################################
   ApiGateway:
     Type: "AWS::ApiGateway::RestApi"
     Properties:
@@ -56,6 +65,9 @@ Resources:
       StageName: "prod"
     DependsOn: "ApiGatewayRootMethod"
 
+  ############################################################################
+  # LAMBDAS
+  ############################################################################
   LambdaFunctionCWDispatch:
     Type: "AWS::Serverless::Function"
     Properties:
@@ -63,13 +75,14 @@ Resources:
       Description: "Cost Watcher - Dispatcher lambda to acknowledge a slash command and kick off the detail lookup"
       Environment:
         Variables:
-          SNSTopicArn: !Join ["", ["arn:aws:sns:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId",":",!GetAtt "SNSTopic.TopicName"]]
+          SNSTopicArn: !Join ["", ["arn:aws:sns:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId",":",!GetAtt "SNSTopicDispatch.TopicName"]]
       FunctionName: "CostWatcherDispatch"
       Handler: "CostWatcherDispatch.lambda_handler"
       MemorySize: 128
       Role: !GetAtt "LambdaExecutionRole.Arn"
       Runtime: "python3.7"
       Timeout: 90
+
 
 
   LambdaFunctionCWAccount:
@@ -107,7 +120,26 @@ Resources:
       Timeout: 90
 
 
-  SNSTopic:
+  LambdaFunctionCWOverview:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      CodeUri: ./scripts/CostWatcherOverview.py
+      Description: "Cost Watcher - Push cost data to SNS"
+      Environment:
+        Variables:
+          SNSTopicArn: !Join ["", ["arn:aws:sns:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId",":",!GetAtt "SNSTopicOverview.TopicName"]]
+      FunctionName: "CostWatcherOverview"
+      Handler: "CostWatcherOverview.lambda_handler"
+      MemorySize: 128
+      Role: !GetAtt "LambdaExecutionRole.Arn"
+      Runtime: "python3.7"
+      Timeout: 90
+
+
+  ############################################################################
+  # SNS
+  ############################################################################
+  SNSTopicDispatch:
     Type: AWS::SNS::Topic
     Properties:
       TopicName: "CostWatcherDispatch"
@@ -115,32 +147,54 @@ Resources:
         - Endpoint: !GetAtt "LambdaFunctionCWDetail.Arn"
           Protocol: lambda
 
+  SNSTopicOverview:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: "CostWatcherOverview"
+      Subscription:
+        - Endpoint: !GetAtt "LambdaFunctionCWAccount.Arn"
+          Protocol: lambda
 
+
+  ############################################################################
+  # EVENT RULE (CRON)
+  ############################################################################
   LambdaCronEvent:
     Type: AWS::Events::Rule
     Properties:
       ScheduleExpression: !Sub 'cron(0 ${NotificationTime} * * ? *)'
       Targets:
         - Arn:
-            !GetAtt "LambdaFunctionCWAccount.Arn"
+            !GetAtt "LambdaFunctionCWOverview.Arn"
           Id:
-            !Ref "LambdaFunctionCWAccount"
+            !Ref "LambdaFunctionCWOverview"
 
+  ############################################################################
+  # PERMISSIONS AND ROLES
+  ############################################################################
   LambdaInvokePermissionCron:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !GetAtt "LambdaFunctionCWAccount.Arn"
+      FunctionName: !GetAtt "LambdaFunctionCWOverview.Arn"
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceArn: !GetAtt "LambdaCronEvent.Arn"
 
-  LambdaInvokePermissionSNS:
+  LambdaInvokePermissionSNSDetail:
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !GetAtt "LambdaFunctionCWDetail.Arn"
       Action: lambda:InvokeFunction
       Principal: sns.amazonaws.com
-      SourceArn: !Ref "SNSTopic"
+      SourceArn: !Ref "SNSTopicDispatch"
+
+  LambdaInvokePermissionSNSOverview:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt "LambdaFunctionCWAccount.Arn"
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref "SNSTopicOverview"
 
   LambdaApiGatewayInvoke:
     Type: "AWS::Lambda::Permission"
@@ -168,6 +222,7 @@ Resources:
             Statement:
               - Action:
                   - "organizations:DescribeAccount"
+                  - "organizations:DescribeOrganization"
                   - "ce:GetCostAndUsage"
                 Effect: Allow
                 Resource: '*'
@@ -180,14 +235,19 @@ Resources:
                   - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/CostWatcherAccount:*"
                   - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/CostWatcherDetail:*"
                   - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/CostWatcherDispatch:*"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/CostWatcherOverview:*"
                   - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
               - Action:
                   - "sns:Publish"
                 Effect: Allow
                 Resource:
                   - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:CostWatcherDispatch"
+                  - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:CostWatcherOverview"
           PolicyName: "CostWatcher"
 
+  ############################################################################
+  # LOG GROUPS
+  ############################################################################
   LambdaLogGroupDispatch:
     Type: "AWS::Logs::LogGroup"
     Properties:
@@ -206,7 +266,16 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${LambdaFunctionCWDetail}"
       RetentionInDays: 90
 
+  LambdaLogGroupOverview:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${LambdaFunctionCWOverview}"
+      RetentionInDays: 90
 
+
+##############################################################################
+# OUTPUTS
+##############################################################################
 Outputs:
   ApiGatewayInvokeURL:
     Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
@@ -219,3 +288,9 @@ Outputs:
 
   LambdaArnDetail:
     Value: !GetAtt "LambdaFunctionCWDetail.Arn"
+
+  LambdaArnOverview:
+    Value: !GetAtt "LambdaFunctionCWOverview.Arn"
+
+  SNSTopic:
+    Value: !GetAtt "SNSTopicOverview.TopicName"
