@@ -16,7 +16,6 @@ def lambda_handler(event, context):
     
     try:
         message = json.loads(event['Records'][0]['Sns']['Message'])
-        command = message['command']
         account = message['account']
         responseurl = message['responseurl']
     
