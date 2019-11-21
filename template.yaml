@@ -293,4 +293,4 @@ Outputs:
     Value: !GetAtt "LambdaFunctionCWOverview.Arn"
 
   SNSTopic:
-    Value: !GetAtt "SNSTopicOverview.TopicName"
+    Value: !Ref "SNSTopicOverview"
