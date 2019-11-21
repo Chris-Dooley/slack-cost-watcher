@@ -7,6 +7,9 @@ import os
 SNSTopicArn = os.environ['SNSTopicArn']
 
 def lambda_handler(event, context):
+    response = ''
+    stat_code = 0
+
     try:
         output = {}
         query = dict([x.split('=') for x in re.split('&', event['body'])])
@@ -23,15 +26,16 @@ def lambda_handler(event, context):
             'responseurl': responseurl
         }
 
-        sns_response = sns_client.publish(
+        _ = sns_client.publish(
             TopicArn=SNSTopicArn, 
             Message=json.dumps({'default': json.dumps(message)}),
             MessageStructure='json'
         )
         
     except Exception as e:
+        stat_code = 500
         response = '[ERROR] {}'.format(str(e))
 
-    output['statusCode'] = 200
-    output['body'] = 'Ok, fetching details for account *{}*'.format(account)
+    output['statusCode'] = stat_code or 200
+    output['body'] = response or 'Ok, fetching details for account *{}*'.format(account)
     return output
