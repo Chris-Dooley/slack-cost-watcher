@@ -90,7 +90,7 @@ def lambda_handler(event, context):
         monthlyTotalCost += monthlyAmount
 
     # Sort the accounts list
-    payload['accounts'] = sorted(accountsList, key=lambda x: x['dailyAmount'], reverse=True)
+    payload['accounts'] = sorted(accountsList, key=lambda x: x['monthlyAmount'], reverse=True)
     # Add the overall entries
     # If this timestamp needs the microseconds changed to 3 digits, this should do it
     # re.sub(r'\.(\d{3})\d*\+', r'.\1+', startDate.replace(tzinfo=datetime.timezone(offset=utc_offset)).isoformat())
