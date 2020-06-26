@@ -95,6 +95,7 @@ Resources:
           AccountDangerLevel: !Ref "AccountDangerLevel"
           AccountWarningLevel: !Ref "AccountWarningLevel"
           SlackWebHookUrl: !Ref "SlackWebHookUrl"
+          AccountLimit: 50
       FunctionName: "CostWatcherAccount"
       Handler: "CostWatcherAccount.lambda_handler"
       MemorySize: 128

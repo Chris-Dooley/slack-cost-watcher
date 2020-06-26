@@ -9,13 +9,17 @@ def lambda_handler(event, context):
     AccountWarningLevel = int(os.environ['AccountWarningLevel'])
     AccountDangerLevel = int(os.environ['AccountDangerLevel'])
     SlackWebHookUrl = os.environ['SlackWebHookUrl']
+    try:
+        AccountLimit = os.environ['AccountLimit']
+    except KeyError:
+        AccountLimit = None
 
     try:
         message = json.loads(event['Records'][0]['Sns']['Message'])
     except Exception as e:
         payload = '{"text" : "' + '[ERROR] {}'.format(str(e)) + '"}'
     else:
-        accounts_list = message['accounts']
+        accounts_list = message['accounts'][0:AccountLimit]
         datestamp = datetime.datetime.fromisoformat(message['datestamp']).strftime('%d %b %Y (%a)')
         dailyTotal = message['dailyTotal']
         monthlyTotal = message['monthlyTotal']
