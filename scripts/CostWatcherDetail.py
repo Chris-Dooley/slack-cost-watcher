@@ -2,7 +2,7 @@ import boto3
 import json
 import datetime
 import os
-from botocore.vendored import requests
+import urllib3
 
 startDate = datetime.datetime.today() - datetime.timedelta(days = 1)
 startDateSOM = startDate.replace(day=1)
@@ -10,6 +10,8 @@ endDate = datetime.datetime.today()
 
 DetailWarningLevel = int(os.environ['DetailWarningLevel'])
 DetailDangerLevel = int(os.environ['DetailDangerLevel'])
+
+http = urllib3.PoolManager()
 
 
 def lambda_handler(event, context):
@@ -135,4 +137,5 @@ def lambda_handler(event, context):
     except Exception as e:
         payload = '{"text" : "' + '[ERROR] {}'.format(str(e)) + '"}'
     
-    requests.post(responseurl, data=payload)
+    encoded_msg = json.dumps(payload).encode('utf-8')
+    return http.request('POST',responseurl, body=encoded_msg)

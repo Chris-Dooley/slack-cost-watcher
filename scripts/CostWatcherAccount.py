@@ -2,13 +2,16 @@ import boto3
 import json
 import datetime
 import os
-from botocore.vendored import requests
+import urllib3
 
 def lambda_handler(event, context):
     # Get environment variables
     AccountWarningLevel = int(os.environ['AccountWarningLevel'])
     AccountDangerLevel = int(os.environ['AccountDangerLevel'])
     SlackWebHookUrl = os.environ['SlackWebHookUrl']
+
+    http = urllib3.PoolManager()
+
     try:
         AccountLimit = os.environ['AccountLimit']
     except KeyError:
@@ -55,4 +58,5 @@ def lambda_handler(event, context):
 
         payload += '"}'
 
-    requests.post(SlackWebHookUrl, data=payload)
+    encoded_msg = json.dumps(payload).encode('utf-8')
+    return http.request('POST',SlackWebHookUrl, body=encoded_msg)
