@@ -13,7 +13,7 @@ def lambda_handler(event, context):
     http = urllib3.PoolManager()
 
     try:
-        AccountLimit = os.environ['AccountLimit']
+        AccountLimit = int(os.environ['AccountLimit'])
     except KeyError:
         AccountLimit = None
 
@@ -58,5 +58,6 @@ def lambda_handler(event, context):
 
         payload += '"}'
 
-    encoded_msg = json.dumps(payload).encode('utf-8')
-    return http.request('POST',SlackWebHookUrl, body=encoded_msg)
+    encoded_msg = payload.encode('utf-8')
+    response = http.request('POST',SlackWebHookUrl, body=encoded_msg)
+    return str(response)
