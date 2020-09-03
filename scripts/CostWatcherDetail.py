@@ -137,5 +137,5 @@ def lambda_handler(event, context):
     except Exception as e:
         payload = '{"text" : "' + '[ERROR] {}'.format(str(e)) + '"}'
     
-    encoded_msg = json.dumps(payload).encode('utf-8')
+    encoded_msg = payload.encode('utf-8')
     return http.request('POST',responseurl, body=encoded_msg)
