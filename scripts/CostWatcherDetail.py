@@ -138,4 +138,5 @@ def lambda_handler(event, context):
         payload = '{"text" : "' + '[ERROR] {}'.format(str(e)) + '"}'
     
     encoded_msg = payload.encode('utf-8')
-    return http.request('POST',responseurl, body=encoded_msg)
+    req = http.request('POST',responseurl, body=encoded_msg)
+    return req.data
